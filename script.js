@@ -56,3 +56,102 @@ const inputTransferAmount = document.querySelector('.form__input--amount');
 const inputLoanAmount = document.querySelector('.form__input--loan-amount');
 const inputCloseUsername = document.querySelector('.form__input--user');
 const inputClosePin = document.querySelector('.form__input--pin');
+
+const displayMovements = function (movements, sort = false) {
+    containerMovements.innerHTML = '';
+    const movs = sort ? movements.slice().sort((a, b) => a - b) : movements;
+    movs.forEach((mov, i) => {
+        const type = mov > 0 ? 'deposit' : 'withdrawal';
+        const html = `
+        <div class="movements__row">
+            <div class="movements__type movements__type--${type}">${i + 1} ${type}</div>
+            <div class="movements__value">${mov}€</div>
+        </div>`;
+        containerMovements.insertAdjacentHTML('afterbegin', html);
+    })
+}
+
+const calcDisplayBalance = function (acc) {
+    acc.balance = acc.movements.reduce((acc, mov) => acc + mov, 0);
+    labelBalance.textContent = `${acc.balance}€`;
+}
+
+const calcDisplaySummary = function (account) {
+    const income = account.movements.filter(mov => mov > 0).reduce((acc, mov) => acc + mov, 0);
+    labelSumIn.textContent = `${income}€`;
+
+    const out = account.movements.filter(mov => mov < 0).reduce((acc, mov) => acc + mov, 0);
+    labelSumOut.textContent = `${Math.abs(out)}€`;
+
+    const interest = account.movements.filter(mov => mov > 0).map(deposit => deposit * account.interestRate / 100).filter(interest => interest >= 1).reduce((acc, interest) => acc + interest, 0);
+    labelSumInterest.textContent = `${interest}€`;
+}
+
+const updateUI = function (acc) {
+    displayMovements(acc.movements);
+    calcDisplayBalance(acc);
+    calcDisplaySummary(acc);
+}
+
+const createUsenames = function (allaccounts) {
+    allaccounts.forEach(function (account) {
+        account.username = account.owner.toLowerCase().split(' ').map(name => name[0]).join('');
+    });
+}
+createUsenames(accounts);
+
+//Even handler
+let currentAccount;
+btnLogin.addEventListener('click', (e) => {
+    e.preventDefault();
+    currentAccount = accounts.find(acc => acc.username === inputLoginUsername.value);
+    if (currentAccount?.pin === Number(inputLoginPin?.value)) {
+        //Display UI and message;
+        labelWelcome.textContent = `Welcome back ${currentAccount.owner.split(' ')[0]}`;
+        containerApp.style.opacity = 100;
+        //display
+        updateUI(currentAccount);
+
+        //Clear input fields
+        inputLoginPin.value = inputLoginUsername.value = '';
+        inputLoginPin.blur();
+    }
+});
+
+btnTransfer.addEventListener('click', function (e) {
+    e.preventDefault();
+    const amount = Number(inputTransferAmount.value);
+    const receiverAcc = accounts.find(acc => acc.username === inputTransferTo.value);
+    if (amount > 0 && receiverAcc && currentAccount.balance >= amount && receiverAcc?.username != currentAccount.username) {
+        receiverAcc.movements.push(amount);
+        currentAccount.movements.push(-amount);
+        updateUI(currentAccount);
+    }
+    inputTransferAmount.value = inputTransferTo.value = '';
+});
+
+btnLoan.addEventListener('click', function (e) {
+    e.preventDefault();
+    const amount = Number(inputLoanAmount.value);
+    if (amount > 0 && currentAccount.movements.some(mov => mov >= amount * 0.1)) {
+        currentAccount.movements.push(amount);
+        updateUI();
+        inputLoanAmount.value = '';
+    }
+});
+
+let sorted = false;
+btnSort.addEventListener('click', (e) => {
+    e.preventDefault();
+    displayMovements(currentAccount.movements, !sorted);
+    sorted = !sorted;
+});
+
+btnClose.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (inputCloseUsername?.value === currentAccount?.username && Number(inputClosePin?.value) === currentAccount?.pin) {
+        accounts.splice(accounts.findIndex(acc => acc.username === currentAccount?.username), 1);
+        containerApp.style.opacity = 0;
+        inputClosePin.value = inputCloseUsername.value = '';
+    }
+});
