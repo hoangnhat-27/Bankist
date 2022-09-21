@@ -91,7 +91,7 @@ const loadImg = (entries, observer) => {
     entry.target.addEventListener('load', () => {
         entry.target.classList.remove('lazy-img');
     });
-    // observer.unobserve();
+    observer.unobserve();
 }
 const imgTargets = document.querySelectorAll(`img[data-src]
 `);
